@@ -188,12 +188,37 @@ DAFTAR_JENIS_KENDARAAN = [
     "Other", "Truk/Angkutan Barang",
 ]
 DAFTAR_JENIS_KLAIM = [
-    "Lalu Lintas Jalan", "Penumpang Angkutan Umum", "Lainnya", "None",
+    "Lalu Lintas Jalan", "Penumpang Angkutan Umum", "Lainnya",
+    LABEL_TAMPILAN_KLAIM_KOSONG,
 ]
 
 # Nama file model & label kolom target - SESUAIKAN jika berbeda
-NAMA_FILE_MODEL = "injury_severity_model (2).pkl"
+# (mendukung beberapa kemungkinan nama file, karena beberapa platform
+#  otomatis mengganti spasi/tanda kurung menjadi underscore saat upload)
+KEMUNGKINAN_NAMA_FILE_MODEL = [
+    "injury_severity_model (2).pkl",
+    "injury_severity_model_(2).pkl",
+    "injury_severity_model__2_.pkl",
+    "injury_severity_model.pkl",
+]
 NAMA_KOLOM_TARGET = "injury_severity"
+
+# PENTING: model ini hasil klasifikasi BINER (model.classes_ -> [0, 1]).
+# Model tidak menyimpan label teks untuk tiap kelas, jadi pemetaan di bawah
+# ini HARUS disesuaikan secara manual agar sesuai definisi label saat
+# training (misalnya dari `y.unique()` atau `LabelEncoder.classes_` pada
+# notebook training). Nilai di bawah hanyalah PLACEHOLDER.
+LABEL_KELAS = {
+    0: "Kelas 0 (mis. Tidak Berat)",
+    1: "Kelas 1 (mis. Berat)",
+}
+
+# Representasi eksplisit untuk kategori kosong/tidak ada pada jenis_klaim.
+# Saat training, kategori ini tersimpan sebagai nilai kosong (None/NaN),
+# BUKAN string "None". Jika keduanya tertukar, OneHotEncoder akan
+# menganggapnya kategori tak dikenal (handle_unknown='ignore') dan
+# hasil prediksi menjadi tidak akurat.
+LABEL_TAMPILAN_KLAIM_KOSONG = "Tidak Ada / None"
 
 
 # ==========================================================================
@@ -208,14 +233,20 @@ def load_artifacts():
     kategorikal) di dalamnya, sehingga preprocessor terpisah bersifat opsional.
     Mengembalikan tuple (model, preprocessor_or_None).
     """
-    model_path = Path(NAMA_FILE_MODEL)
     preprocessor_path = Path("preprocessor.pkl")
 
     model = None
     preprocessor = None
+    model_path_ditemukan = None
 
-    if model_path.exists():
-        model = joblib.load(model_path)
+    for nama_file in KEMUNGKINAN_NAMA_FILE_MODEL:
+        kandidat = Path(nama_file)
+        if kandidat.exists():
+            model_path_ditemukan = kandidat
+            break
+
+    if model_path_ditemukan is not None:
+        model = joblib.load(model_path_ditemukan)
     if preprocessor_path.exists():
         preprocessor = joblib.load(preprocessor_path)
 
@@ -231,6 +262,14 @@ def build_input_dataframe(usia, usia_kendaraan, jml_kendaraan,
     (3 kolom numerik + 5 kolom kategorikal, termasuk jenis_klaim sebagai fitur).
     Sesuaikan urutan/nama kolom di bawah bila berbeda dari X asli.
     """
+    # Konversi label tampilan "Tidak Ada / None" kembali menjadi nilai
+    # kosong (None) yang PERSIS sama dengan representasi kategori kosong
+    # saat training. Ini krusial karena OneHotEncoder membedakan string
+    # "None" dari nilai kosong (None/NaN) sebagai dua kategori berbeda.
+    jenis_klaim_final = (
+        None if jenis_klaim == LABEL_TAMPILAN_KLAIM_KOSONG else jenis_klaim
+    )
+
     data = {
         "usia": [usia],
         "usia_kendaraan_tahun": [usia_kendaraan],
@@ -239,7 +278,7 @@ def build_input_dataframe(usia, usia_kendaraan, jml_kendaraan,
         "gender": [gender],
         "jenis_kecelakaan": [jenis_kecelakaan],
         "jenis_kendaraan": [jenis_kendaraan],
-        "jenis_klaim": [jenis_klaim],
+        "jenis_klaim": [jenis_klaim_final],
     }
     return pd.DataFrame(data)
 
@@ -291,7 +330,8 @@ model, preprocessor = load_artifacts()
 
 if model is None:
     st.warning(
-        f"⚠️ File **{NAMA_FILE_MODEL}** belum ditemukan pada direktori aplikasi. "
+        "⚠️ File model belum ditemukan pada direktori aplikasi "
+        f"(dicari: {', '.join(KEMUNGKINAN_NAMA_FILE_MODEL)}). "
         "Form input di bawah tetap dapat dicoba, namun prediksi tidak akan "
         "berjalan sampai model diletakkan pada folder yang sama dengan file ini."
     )
@@ -350,7 +390,7 @@ with col_kanan:
 st.markdown('<div class="jr-card">', unsafe_allow_html=True)
 st.markdown("### 🔍 Hasil Prediksi")
 
-tombol_prediksi = st.button("Prediksi Jenis Klaim", use_container_width=True)
+tombol_prediksi = st.button("Prediksi Tingkat Keparahan Cedera", use_container_width=True)
 
 if tombol_prediksi:
     input_df = build_input_dataframe(
@@ -363,8 +403,8 @@ if tombol_prediksi:
 
     if model is None:
         st.error(
-            f"Model belum tersedia. Letakkan file **{NAMA_FILE_MODEL}** pada "
-            "direktori aplikasi ini lalu jalankan ulang."
+            "Model belum tersedia. Letakkan salah satu file berikut pada "
+            f"direktori aplikasi ini lalu jalankan ulang: {', '.join(KEMUNGKINAN_NAMA_FILE_MODEL)}."
         )
     else:
         try:
@@ -377,15 +417,16 @@ if tombol_prediksi:
 
             prediksi = model.predict(data_final)[0]
 
-            # Ambil label kelas langsung dari model, bukan hardcode,
-            # karena label injury_severity belum diketahui pasti.
+            # Ambil label kelas langsung dari model (bukan hardcode urutan),
+            # lalu petakan ke label yang mudah dibaca lewat LABEL_KELAS.
             kelas_model = list(getattr(model, "classes_", []))
+            label_prediksi = LABEL_KELAS.get(prediksi, str(prediksi))
 
             st.markdown(
                 f"""
                 <div class="jr-result">
                     <div class="label">Prediksi {NAMA_KOLOM_TARGET.replace('_', ' ').title()}</div>
-                    <div class="value">{prediksi}</div>
+                    <div class="value">{label_prediksi}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -394,13 +435,20 @@ if tombol_prediksi:
             if hasattr(model, "predict_proba") and kelas_model:
                 proba = model.predict_proba(data_final)[0]
                 proba_df = pd.DataFrame({
-                    "Tingkat Keparahan": kelas_model,
+                    "Tingkat Keparahan": [LABEL_KELAS.get(k, str(k)) for k in kelas_model],
                     "Probabilitas": np.round(proba, 4),
                 }).sort_values("Probabilitas", ascending=False)
 
                 st.markdown("#### Distribusi Probabilitas")
                 st.bar_chart(proba_df.set_index("Tingkat Keparahan"))
                 st.dataframe(proba_df, use_container_width=True, hide_index=True)
+
+                st.caption(
+                    "⚠️ Label kelas di atas (mis. 'Kelas 0', 'Kelas 1') adalah "
+                    "placeholder. Sesuaikan kamus `LABEL_KELAS` di bagian atas "
+                    "skrip ini dengan arti sebenarnya dari setiap kelas sesuai "
+                    "definisi saat training model."
+                )
 
         except Exception as e:
             st.error(f"Terjadi kesalahan saat melakukan prediksi: {e}")
