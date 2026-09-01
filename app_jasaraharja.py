@@ -141,8 +141,7 @@ DAFTAR_PROVINSI = sorted([
 DAFTAR_GENDER = ["Laki-laki", "Perempuan"]
 DAFTAR_JENIS_KECELAKAAN = ["Lalu Lintas Jalan", "Penumpang Angkutan Umum", "Other"]
 DAFTAR_JENIS_KENDARAAN = [
-    "Sepeda Motor", "Mobil Penumpang", "Angkutan Umum/Bus", "Lainnya",
-    "Other", "Truk/Angkutan Barang",
+    "Sepeda Motor", "Mobil Penumpang", "Angkutan Umum/Bus", "Lainnya", "Truk/Angkutan Barang",
 ]
 
 # Nilai tetap (bukan input pengguna) yang dikirim untuk kolom jenis_klaim.
