@@ -145,15 +145,13 @@ DAFTAR_JENIS_KENDARAAN = [
     "Other", "Truk/Angkutan Barang",
 ]
 
-# Representasi kategori kosong pada jenis_klaim. Saat training, kategori ini
-# tersimpan sebagai nilai kosong (None/NaN), BUKAN string "None" — jika
-# tertukar, OneHotEncoder(handle_unknown='ignore') akan menganggapnya
-# kategori tak dikenal dan hasil prediksi jadi tidak akurat.
-LABEL_TAMPILAN_KLAIM_KOSONG = "Tidak Ada / Tidak Diketahui"
-DAFTAR_JENIS_KLAIM = [
-    "Lalu Lintas Jalan", "Penumpang Angkutan Umum", "Lainnya",
-    LABEL_TAMPILAN_KLAIM_KOSONG,
-]
+# Nilai tetap (bukan input pengguna) yang dikirim untuk kolom jenis_klaim.
+# Fitur ini SENGAJA tidak ditampilkan di form; kolom tetap wajib dikirim ke
+# model karena ColumnTransformer memilihnya berdasarkan nama kolom, tapi
+# nilainya dibiarkan kosong (None, bukan string "None") supaya SimpleImputer
+# di dalam pipeline yang menentukan nilai default (kategori terbanyak) —
+# bukan kita yang menebak nilainya di sini.
+NILAI_TETAP_JENIS_KLAIM = None
 
 # Beberapa kategori kategorikal punya dua istilah yang mirip ("Lainnya" vs
 # "Other"); format_func ini memperjelas maknanya di dropdown tanpa mengubah
@@ -161,8 +159,6 @@ DAFTAR_JENIS_KLAIM = [
 def format_kategori(value: str) -> str:
     if value == "Other":
         return "Lainnya (Other)"
-    if value == LABEL_TAMPILAN_KLAIM_KOSONG:
-        return LABEL_TAMPILAN_KLAIM_KOSONG
     return value
 
 # Nama file model - beberapa kemungkinan dicoba otomatis karena beberapa
@@ -215,11 +211,13 @@ def load_artifacts():
 
 def build_input_dataframe(usia, usia_kendaraan, jml_kendaraan,
                            provinsi, gender, jenis_kecelakaan,
-                           jenis_kendaraan, jenis_klaim):
-    """Menyusun satu baris DataFrame dari input pengguna."""
-    jenis_klaim_final = (
-        None if jenis_klaim == LABEL_TAMPILAN_KLAIM_KOSONG else jenis_klaim
-    )
+                           jenis_kendaraan):
+    """
+    Menyusun satu baris DataFrame dari input pengguna.
+    Kolom 'jenis_klaim' TIDAK diambil dari input pengguna (fitur ini
+    dinonaktifkan dari form) — nilainya selalu NILAI_TETAP_JENIS_KLAIM
+    agar tetap sesuai dengan kolom yang dibutuhkan pipeline model.
+    """
     data = {
         "usia": [usia],
         "usia_kendaraan_tahun": [usia_kendaraan],
@@ -228,7 +226,7 @@ def build_input_dataframe(usia, usia_kendaraan, jml_kendaraan,
         "gender": [gender],
         "jenis_kecelakaan": [jenis_kecelakaan],
         "jenis_kendaraan": [jenis_kendaraan],
-        "jenis_klaim": [jenis_klaim_final],
+        "jenis_klaim": [NILAI_TETAP_JENIS_KLAIM],
     }
     return pd.DataFrame(data)
 
@@ -347,9 +345,11 @@ with st.form("prediction_form", clear_on_submit=False):
         jenis_kendaraan = st.selectbox(
             "Jenis Kendaraan", DAFTAR_JENIS_KENDARAAN, format_func=format_kategori
         )
-        jenis_klaim = st.selectbox(
-            "Jenis Klaim", DAFTAR_JENIS_KLAIM, format_func=format_kategori
-        )
+
+    st.caption(
+        "ℹ️ Fitur *jenis klaim* dinonaktifkan dari form ini — model akan "
+        "otomatis memakai nilai default (kategori terbanyak) saat memprediksi."
+    )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -361,7 +361,7 @@ with st.form("prediction_form", clear_on_submit=False):
 if submitted:
     input_df = build_input_dataframe(
         usia, usia_kendaraan, jml_kendaraan,
-        provinsi, gender, jenis_kecelakaan, jenis_kendaraan, jenis_klaim,
+        provinsi, gender, jenis_kecelakaan, jenis_kendaraan,
     )
 
     st.markdown('<div class="jr-card">', unsafe_allow_html=True)
