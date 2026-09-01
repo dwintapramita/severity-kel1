@@ -187,6 +187,15 @@ DAFTAR_JENIS_KENDARAAN = [
     "Sepeda Motor", "Mobil Penumpang", "Angkutan Umum/Bus", "Lainnya",
     "Other", "Truk/Angkutan Barang",
 ]
+
+# Representasi eksplisit untuk kategori kosong/tidak ada pada jenis_klaim.
+# Saat training, kategori ini tersimpan sebagai nilai kosong (None/NaN),
+# BUKAN string "None". Jika keduanya tertukar, OneHotEncoder akan
+# menganggapnya kategori tak dikenal (handle_unknown='ignore') dan
+# hasil prediksi menjadi tidak akurat.
+# HARUS didefinisikan sebelum DAFTAR_JENIS_KLAIM karena dipakai di sana.
+LABEL_TAMPILAN_KLAIM_KOSONG = "Tidak Ada / None"
+
 DAFTAR_JENIS_KLAIM = [
     "Lalu Lintas Jalan", "Penumpang Angkutan Umum", "Lainnya",
     LABEL_TAMPILAN_KLAIM_KOSONG,
@@ -212,13 +221,6 @@ LABEL_KELAS = {
     0: "Kelas 0 (mis. Tidak Berat)",
     1: "Kelas 1 (mis. Berat)",
 }
-
-# Representasi eksplisit untuk kategori kosong/tidak ada pada jenis_klaim.
-# Saat training, kategori ini tersimpan sebagai nilai kosong (None/NaN),
-# BUKAN string "None". Jika keduanya tertukar, OneHotEncoder akan
-# menganggapnya kategori tak dikenal (handle_unknown='ignore') dan
-# hasil prediksi menjadi tidak akurat.
-LABEL_TAMPILAN_KLAIM_KOSONG = "Tidak Ada / None"
 
 
 # ==========================================================================
