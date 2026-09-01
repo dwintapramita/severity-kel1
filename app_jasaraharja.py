@@ -176,11 +176,10 @@ KEMUNGKINAN_NAMA_FILE_MODEL = [
 NAMA_KOLOM_TARGET = "injury_severity"
 
 # Label kelas target - dikonfirmasi dari definisi target saat training:
-# kelas 0 = korban tidak meninggal dunia (luka ringan/berat),
-# kelas 1 = korban meninggal dunia.
+# kelas 0 = luka ringan, kelas 1 = luka berat.
 LABEL_KELAS = {
-    0: "Tidak Meninggal Dunia (Luka Ringan/Berat)",
-    1: "Meninggal Dunia",
+    0: "Luka Ringan",
+    1: "Luka Berat",
 }
 KELAS_FATAL = 1  # nilai kelas yang dianggap "risiko tinggi" untuk kartu hasil
 
@@ -391,7 +390,7 @@ if submitted:
             probabilitas_html = ""
             if proba_fatal is not None:
                 probabilitas_html = (
-                    f"<p><b>Probabilitas kelas Meninggal Dunia:</b> {proba_fatal:.1%}</p>"
+                    f"<p><b>Probabilitas kelas Luka Berat:</b> {proba_fatal:.1%}</p>"
                 )
 
             st.markdown(
