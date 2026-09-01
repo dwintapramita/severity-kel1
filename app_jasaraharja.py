@@ -246,7 +246,7 @@ def probabilitas_kelas_fatal(model, data: pd.DataFrame):
 # ==========================================================================
 with st.sidebar:
     st.markdown("## 🛡️ Jasa Raharja")
-    st.markdown("**Hadir Melindungi Bangsa**")
+    st.markdown("**Melayani Sepenuh Hati**")
     st.markdown("---")
     st.markdown("### Tentang Aplikasi")
     st.write(
